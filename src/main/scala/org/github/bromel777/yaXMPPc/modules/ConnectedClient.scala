@@ -8,7 +8,7 @@ import org.github.bromel777.yaXMPPc.domain.stanza.Stanza
 import tofu.logging.Logging
 import tofu.syntax.monadic._
 
-final class ConnectedClient[F[_]] private (
+final case class ConnectedClient[F[_]] (
   id: UUID,
   messageSocket: MessageSocket[F, Stanza, Stanza]
 )
