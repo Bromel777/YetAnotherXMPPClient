@@ -1,10 +1,8 @@
 package org.github.bromel777.yaXMPPc
 
-import org.github.bromel777.yaXMPPc.configs.{CASettings, XMPPSettings}
-import tofu.WithContext
+import tofu.HasContext
 
 package object context {
 
-  type HasXMPPConfig[F[_]] = WithContext[F, XMPPSettings]
-  type HasCAConfig[F[_]] = WithContext[F, CASettings]
+  type HasAppContext[F[_]] = HasContext[F, AppContext]
 }

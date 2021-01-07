@@ -5,15 +5,17 @@ import derevo.derive
 import derevo.pureconfig.pureconfigReader
 import pureconfig.ConfigSource
 import pureconfig.module.catseffect._
+import tofu.Context
+import tofu.optics.macros.promote
 
 @derive(pureconfigReader)
 final case class AppConfig(
-  commonSettings: CommonSettings,
-  XMPPSettings: Option[XMPPSettings],
-  caSettings: Option[CASettings]
+  @promote commonSettings: CommonSettings,
+  @promote XMPPSettings: Option[XMPPSettings],
+  @promote caSettings: Option[CASettings]
 )
 
-object AppConfig {
+object AppConfig extends Context.Companion[AppConfig] {
 
   def load[F[_]: Sync](pathOpt: Option[String]): F[AppConfig] =
     pathOpt
