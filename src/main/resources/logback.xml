@@ -17,7 +17,7 @@
         <file>explorer.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- daily rollover -->
-            <fileNamePattern>explorer.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <fileNamePattern>application.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
 
             <!-- keep 30 days' worth of history capped at 2GB total size -->
             <maxHistory>30</maxHistory>

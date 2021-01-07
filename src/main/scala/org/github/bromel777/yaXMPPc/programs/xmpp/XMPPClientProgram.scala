@@ -18,10 +18,12 @@ final class XMPPClientProgram[F[_]: Logging: Timer] private (
   tcpClient: Client[F, Stanza, Stanza]
 ) extends Program[F] {
 
-  override def run: Stream[F, Unit] = Stream.eval(info"Xmpp client started!") >> mainPipe
+  override def run: Stream[F, Unit] = Stream.eval(info"Xmpp client started!") >> mainPipe.evalMap { stanza =>
+    info"Receive: ${stanza.toString}"
+  }
 
-  private def mainPipe: Stream[F, Unit] =
-    tcpClient.start
+  private def mainPipe: Stream[F, Stanza] =
+    tcpClient.read
       .onComplete(
         Stream.eval(warn"Connection to XMPP server was closed! Retry after 3 Seconds") >> Stream.sleep(
           3 seconds
@@ -34,8 +36,9 @@ object XMPPClientProgram {
   def make[F[_]: Concurrent: ContextShift: Timer](settings: XMPPClientSettings, socketGroup: SocketGroup)(implicit
     logs: Logs[F, F]
   ): F[Program[F]] =
-    logs.forService[XMPPClientProgram[F]].map { implicit logging =>
-      val tcpClient = TCPClient.make[F](settings.serverHost, settings.serverPort, socketGroup)
-      new XMPPClientProgram(settings, tcpClient)
+    logs.forService[XMPPClientProgram[F]].flatMap { implicit logging =>
+      TCPClient.make[F](settings.serverHost, settings.serverPort, socketGroup).map { client =>
+        new XMPPClientProgram(settings, client)
+      }
     }
 }

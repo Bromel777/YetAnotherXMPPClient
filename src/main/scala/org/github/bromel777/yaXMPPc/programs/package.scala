@@ -24,7 +24,7 @@ package object programs {
         case "xmppClient" =>
           Err("Impossible to run XMPP Client with empty settings!").raise[F, Program[F]]
         case "xmppServer" if ctx.XMPPServerSettings.isDefined =>
-          xmpp.XMPPServerProgram.make[F](ctx.XMPPServerSettings.get)
+          xmpp.XMPPServerProgram.make[F](ctx.XMPPServerSettings.get, socketGroup)
         case "xmppServer" =>
           Err("Impossible to run XMPP Server with empty settings!").raise[F, Program[F]]
         case "caServer" if ctx.caSettings.isDefined =>
