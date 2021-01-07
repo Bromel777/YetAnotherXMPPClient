@@ -13,6 +13,8 @@ object versions {
   val manatki            = "0.10.1"
   val manatkiCirce       = "0.11.6"
   val manatkiPureConfig  = "0.11.6"
+  val pureConfigVersion  = "0.12.1"
+  val scopt              = "4.0.0"
 
   val KindProjector = "0.11.0"
   val MacroParadise = "2.1.1"

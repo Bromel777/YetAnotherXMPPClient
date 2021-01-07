@@ -21,6 +21,8 @@ val yaXMPPc =
         Tofu ++
         Cats ++
         Manatki ++
+        Scopt ++
+        Config ++
         CompilerPlugins
     )
 

@@ -41,6 +41,15 @@ object dependencies {
     "org.manatki" %% "derevo-pureconfig"     % versions.manatkiPureConfig
   )
 
+  val Config: List[ModuleID] = List(
+    "com.github.pureconfig" %% "pureconfig"             % versions.pureConfigVersion,
+    "com.github.pureconfig" %% "pureconfig-cats-effect" % versions.pureConfigVersion
+  )
+
+  val Scopt: List[ModuleID] = List(
+    "com.github.scopt" %% "scopt" % versions.scopt
+  )
+
   val CompilerPlugins: List[ModuleID] =
     List(
       compilerPlugin(

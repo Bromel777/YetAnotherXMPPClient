@@ -1,4 +1,4 @@
-package org.github.bromel777.yaXMPPc.settings
+package org.github.bromel777.yaXMPPc.configs
 
 import derevo.derive
 import derevo.pureconfig.pureconfigReader
