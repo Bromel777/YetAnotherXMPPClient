@@ -1,7 +1,8 @@
 package org.github.bromel777.yaXMPPc
 
 import cats.Functor
-import cats.effect.Sync
+import cats.effect.{Concurrent, ContextShift, Sync, Timer}
+import fs2.io.tcp.SocketGroup
 import org.github.bromel777.yaXMPPc.context.{AppContext, HasAppContext}
 import org.github.bromel777.yaXMPPc.errors.Err
 import tofu.Raise.ContravariantRaise
@@ -12,13 +13,14 @@ import tofu.syntax.embed._
 
 package object programs {
 
-  def getProgram[F[_]: HasAppContext: Sync: ContravariantRaise[*[_], Err]](
-    progName: String
+  def getProgram[F[_]: HasAppContext: Concurrent: ContextShift: ContravariantRaise[*[_], Err]: Timer](
+    progName: String,
+    socketGroup: SocketGroup
   )(implicit logs: Logs[F, F]): Program[F] =
     (tofu.syntax.context.context[F] flatMap { (ctx: AppContext) =>
       progName match {
         case "xmppClient" if ctx.XMPPClientSettings.isDefined =>
-          xmpp.XMPPClientProgram.make[F](ctx.XMPPClientSettings.get)
+          xmpp.XMPPClientProgram.make[F](ctx.XMPPClientSettings.get, socketGroup)
         case "xmppClient" =>
           Err("Impossible to run XMPP Client with empty settings!").raise[F, Program[F]]
         case "xmppServer" if ctx.XMPPServerSettings.isDefined =>

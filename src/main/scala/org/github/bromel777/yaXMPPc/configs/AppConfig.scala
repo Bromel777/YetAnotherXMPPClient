@@ -9,10 +9,10 @@ import tofu.Context
 
 @derive(pureconfigReader)
 final case class AppConfig(
-                            commonSettings: CommonSettings,
-                            XMPPServerSettings: Option[XMPPServerSettings],
-                            XMPPClientSettings: Option[XMPPServerSettings],
-                            caSettings: Option[CASettings]
+  commonSettings: CommonSettings,
+  XMPPServerSettings: Option[XMPPServerSettings],
+  XMPPClientSettings: Option[XMPPClientSettings],
+  caSettings: Option[CASettings]
 )
 
 object AppConfig extends Context.Companion[AppConfig] {

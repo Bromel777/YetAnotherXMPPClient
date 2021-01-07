@@ -1,7 +1,6 @@
 object versions {
 
-  val fs2io              = "3.0.0-M7"
-  val fs2Scodec          = "1.0.0-M1"
+  val fs2                = "2.2.2"
   val newtype            = "0.4.3"
   val monix              = "3.1.0"
   val tofu               = "0.8.0"
@@ -21,7 +20,7 @@ object versions {
   val circeFs2           = "0.13.0"
   val slf4j              = "1.7.25"
   val scodec             = "1.11.7"
-  val scodecStream       = "3.0-89-8ba5529"
+  val scodecStream       = "2.0.0"
 
   val KindProjector = "0.11.0"
   val MacroParadise = "2.1.1"

@@ -4,8 +4,8 @@ import sbt.librarymanagement.ModuleID
 object dependencies {
 
   val Fs2: List[ModuleID] = List(
-    "co.fs2" %% "fs2-io"     % versions.fs2io,
-    "co.fs2" %% "fs2-scodec" % versions.fs2Scodec
+    "co.fs2" %% "fs2-core"   % versions.fs2,
+    "co.fs2" %% "fs2-io"     % versions.fs2
   )
 
   val Typing: List[ModuleID] = List(
@@ -61,7 +61,6 @@ object dependencies {
   )
 
   val Scodec: List[ModuleID] = List(
-    "org.scodec" %% "scodec-core" % versions.scodec,
     "org.scodec" %% "scodec-stream" % versions.scodecStream
   )
 
