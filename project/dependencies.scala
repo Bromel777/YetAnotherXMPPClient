@@ -36,9 +36,9 @@ object dependencies {
   )
 
   val Manatki: List[ModuleID] = List(
-    "org.manatki" %% "derevo" % versions.manatki,
-    "org.manatki" %% "derevo-circe-magnolia" % versions.manatki,
-    "org.manatki" %% "derevo-pureconfig" % versions.manatki
+    "org.manatki" %% "derevo"                % versions.manatki,
+    "org.manatki" %% "derevo-circe-magnolia" % versions.manatkiCirce,
+    "org.manatki" %% "derevo-pureconfig"     % versions.manatkiPureConfig
   )
 
   val CompilerPlugins: List[ModuleID] =

@@ -11,6 +11,8 @@ object versions {
   val catsTaglessVersion = "0.12"
   val mouseVersion       = "0.23"
   val manatki            = "0.10.1"
+  val manatkiCirce       = "0.11.6"
+  val manatkiPureConfig  = "0.11.6"
 
   val KindProjector = "0.11.0"
   val MacroParadise = "2.1.1"
