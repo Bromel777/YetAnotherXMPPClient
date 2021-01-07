@@ -5,6 +5,6 @@ import derevo.pureconfig.pureconfigReader
 import tofu.Context
 
 @derive(pureconfigReader)
-final case class XMPPSettings(host: String, port: Int)
+final case class XMPPServerSettings(host: String, port: Int)
 
-object XMPPSettings extends Context.Companion[Option[XMPPSettings]]
+object XMPPServerSettings extends Context.Companion[Option[XMPPServerSettings]]

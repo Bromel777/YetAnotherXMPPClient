@@ -23,16 +23,16 @@ object Application extends TaskApp {
 
   private val wr: WithRun[AppF, InitF, AppContext] = implicitly
 
-  implicit val logsFF: Logs[AppF, AppF] = Logs.empty[AppF, AppF]
+  implicit val logsFF: Logs[AppF, AppF] = Logs.sync[AppF, AppF]
 
   override def run(args: List[String]): InitF[ExitCode] =
-    (Args.read(args) >>= (argsList =>
+    (Args.read[InitF](args) >>= (argsList =>
         AppConfig.load[InitF](argsList.configPathOpt) >>= { cfg =>
           mkResources[InitF, AppF](cfg).use { programs =>
             Stream
               .emits(
                 programs.map(
-                  _.run.translate(wr.runContextK(AppContext(cfg.commonSettings, cfg.XMPPSettings, cfg.caSettings)))
+                  _.run.translate(wr.runContextK(AppContext(cfg.commonSettings, cfg.XMPPServerSettings, cfg.caSettings)))
                 )
               )
               .parJoinUnbounded

@@ -1,13 +1,17 @@
 package org.github.bromel777.yaXMPPc.context
 
-import org.github.bromel777.yaXMPPc.configs.{CASettings, CommonSettings, XMPPSettings}
+import org.github.bromel777.yaXMPPc.configs.{CASettings, CommonSettings, XMPPClientSettings, XMPPServerSettings}
 import tofu.Context
+import tofu.logging.Loggable
 import tofu.optics.macros.promote
 
 final case class AppContext(
   @promote commonSettings: CommonSettings,
-  XMPPSettings: Option[XMPPSettings],
+  XMPPServerSettings: Option[XMPPServerSettings],
+  XMPPClientSettings: Option[XMPPClientSettings],
   caSettings: Option[CASettings]
 )
 
-object AppContext extends Context.Companion[AppContext]
+object AppContext extends Context.Companion[AppContext] {
+  implicit val loggable: Loggable[AppContext] = Loggable.empty[AppContext]
+}

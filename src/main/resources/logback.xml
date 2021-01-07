@@ -29,10 +29,9 @@
         </encoder>
     </appender>
 
-    <logger name="org.ergoplatform.explorer" level="TRACE"/>
     <logger name="org.http4s" level="INFO"/>
     <root level="TRACE">
-        <appender-ref ref="ASYNCSTDOUT"/>
+        <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE"/>
     </root>
 

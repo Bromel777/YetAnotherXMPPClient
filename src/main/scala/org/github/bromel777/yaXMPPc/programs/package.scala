@@ -17,12 +17,12 @@ package object programs {
   )(implicit logs: Logs[F, F]): Program[F] =
     (tofu.syntax.context.context[F] flatMap { (ctx: AppContext) =>
       progName match {
-        case "xmppClient" if ctx.XMPPSettings.isDefined =>
-          xmpp.XMPPClientProgram.make[F](ctx.XMPPSettings.get)
+        case "xmppClient" if ctx.XMPPClientSettings.isDefined =>
+          xmpp.XMPPClientProgram.make[F](ctx.XMPPClientSettings.get)
         case "xmppClient" =>
           Err("Impossible to run XMPP Client with empty settings!").raise[F, Program[F]]
-        case "xmppServer" if ctx.XMPPSettings.isDefined =>
-          xmpp.XMPPServerProgram.make[F](ctx.XMPPSettings.get)
+        case "xmppServer" if ctx.XMPPServerSettings.isDefined =>
+          xmpp.XMPPServerProgram.make[F](ctx.XMPPServerSettings.get)
         case "xmppServer" =>
           Err("Impossible to run XMPP Server with empty settings!").raise[F, Program[F]]
         case "caServer" if ctx.caSettings.isDefined =>

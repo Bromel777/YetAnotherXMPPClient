@@ -4,8 +4,8 @@ import sbt.librarymanagement.ModuleID
 object dependencies {
 
   val Fs2: List[ModuleID] = List(
-    "co.fs2" %% "fs2-core" % versions.fs2,
-    "co.fs2" %% "fs2-io"   % versions.fs2
+    "co.fs2" %% "fs2-io"     % versions.fs2io,
+    "co.fs2" %% "fs2-scodec" % versions.fs2Scodec
   )
 
   val Typing: List[ModuleID] = List(
@@ -48,6 +48,21 @@ object dependencies {
 
   val Scopt: List[ModuleID] = List(
     "com.github.scopt" %% "scopt" % versions.scopt
+  )
+
+  val Logging: List[ModuleID] = List(
+    "ch.qos.logback"     % "logback-classic" % versions.logback,
+    "org.slf4j"          % "slf4j-api"       % versions.slf4j,
+    "io.chrisdavenport" %% "log4cats-slf4j"  % versions.log4Cats
+  )
+
+  val Circe: List[ModuleID] = List(
+    "io.circe" %% "circe-fs2" % versions.circeFs2
+  )
+
+  val Scodec: List[ModuleID] = List(
+    "org.scodec" %% "scodec-core" % versions.scodec,
+    "org.scodec" %% "scodec-stream" % versions.scodecStream
   )
 
   val CompilerPlugins: List[ModuleID] =

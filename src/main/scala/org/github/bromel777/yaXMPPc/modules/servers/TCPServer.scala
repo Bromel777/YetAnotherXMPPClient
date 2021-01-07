@@ -1,4 +1,4 @@
-package org.github.bromel777.yaXMPPc.servers
+package org.github.bromel777.yaXMPPc.modules.servers
 
 import fs2.Stream
 

@@ -23,6 +23,9 @@ val yaXMPPc =
         Manatki ++
         Scopt ++
         Config ++
+        Logging ++
+        Circe ++
+        Scodec ++
         CompilerPlugins
     )
 
