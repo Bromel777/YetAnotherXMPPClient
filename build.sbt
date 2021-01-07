@@ -15,7 +15,10 @@ val yaXMPPc =
     .settings(
       libraryDependencies ++=
         Fs2 ++
-        Typing
+        Typing ++
+        Monix ++
+        Tofu ++
+        Cats
     )
 
 lazy val commonScalacOptions = List(
