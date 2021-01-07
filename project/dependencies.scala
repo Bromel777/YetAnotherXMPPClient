@@ -34,4 +34,21 @@ object dependencies {
     "com.olegpy"    %% "meow-mtl-core" % versions.catsMeowMtl,
     "org.typelevel" %% "mouse"         % versions.mouseVersion
   )
+
+  val Manatki: List[ModuleID] = List(
+    "org.manatki" %% "derevo" % versions.manatki,
+    "org.manatki" %% "derevo-circe-magnolia" % versions.manatki,
+    "org.manatki" %% "derevo-pureconfig" % versions.manatki
+  )
+
+  val CompilerPlugins: List[ModuleID] =
+    List(
+      compilerPlugin(
+        "org.typelevel" %% "kind-projector" % versions.KindProjector cross CrossVersion.full
+      ),
+      compilerPlugin(
+        "org.scalamacros" % "paradise" % versions.MacroParadise cross CrossVersion.full
+      ),
+      compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
+    )
 }

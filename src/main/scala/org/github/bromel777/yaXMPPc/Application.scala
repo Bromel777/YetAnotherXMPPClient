@@ -13,5 +13,5 @@ object Application extends TaskApp {
 
   override def run(args: List[String]): Task[ExitCode] = ???
 
-  def mkResources[I[_]](args: Args): Resou
+  def mkResources[I[_]](args: Args) = ???
 }

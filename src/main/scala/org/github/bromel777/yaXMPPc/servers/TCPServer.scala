@@ -15,5 +15,5 @@ final class TCPServer[F[_]]() extends Server[F, Array[Byte], Array[Byte]] {
 
 object TCPServer {
 
-  def make[F]: TCPServer[F] = ???
+  def make[F[_]]: TCPServer[F] = ???
 }

@@ -1,9 +1,9 @@
 import dependencies._
 
-lazy val commonSettings = Seq (
+lazy val commonSettings = Seq(
   name := "YetAnotherXMPPClient",
   version := "0.1",
-  scalaVersion := "2.13.4",
+  scalaVersion := "2.12.12",
   organization := "com.github.bromel777",
   scalacOptions ++= commonScalacOptions,
   resolvers += Resolver.sonatypeRepo("public"),
@@ -11,14 +11,17 @@ lazy val commonSettings = Seq (
 )
 
 val yaXMPPc =
-  (project in file(".")).settings(commonSettings: _*)
+  (project in file("."))
+    .settings(commonSettings: _*)
     .settings(
       libraryDependencies ++=
         Fs2 ++
         Typing ++
         Monix ++
         Tofu ++
-        Cats
+        Cats ++
+        Manatki ++
+        CompilerPlugins
     )
 
 lazy val commonScalacOptions = List(

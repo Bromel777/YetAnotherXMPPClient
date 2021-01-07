@@ -14,5 +14,5 @@ trait CliListener[F[_]] {
 
 object CliListener {
 
-  def make[F]: CliListener[F] = ???
+  def make[F[_]]: CliListener[F] = ???
 }

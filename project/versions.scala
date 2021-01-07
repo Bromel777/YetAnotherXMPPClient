@@ -10,4 +10,8 @@ object versions {
   val catsMeowMtl        = "0.4.0"
   val catsTaglessVersion = "0.12"
   val mouseVersion       = "0.23"
+  val manatki            = "0.10.1"
+
+  val KindProjector = "0.11.0"
+  val MacroParadise = "2.1.1"
 }
