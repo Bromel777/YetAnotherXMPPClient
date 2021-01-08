@@ -35,7 +35,7 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
     commandsQueue.dequeue.evalMap {
       case "Send data" =>
         val messageStanza: Message = Message(Sender("Me"), Receiver("Alice"), "test")
-        Sync[F].delay(println("test123")) >> tcpClient.send(messageStanza)
+        tcpClient.send(messageStanza)
       case _ => Sync[F].delay(println("test")) >> ().pure[F]
     }
 }

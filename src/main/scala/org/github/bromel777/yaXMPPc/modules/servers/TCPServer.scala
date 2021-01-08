@@ -27,7 +27,7 @@ final class TCPServer[F[_]: Concurrent: ContextShift: Logging](
   clients: Ref[F, HashMap[UUID, ConnectedClient[F]]]
 ) extends Server[F, Stanza, Stanza] {
 
-  override def receiverStream: Stream[F, Stanza] =
+  override def receiverStream: Stream[F, (Stanza, UUID)] =
     socketGroup
       .server[F](new InetSocketAddress(serverSettings.port))
       .map { clientSocketResource =>
@@ -54,8 +54,8 @@ final class TCPServer[F[_]: Concurrent: ContextShift: Logging](
   private def setUserOnline(connectedClient: ConnectedClient[F]): F[Unit] =
     info"New connection from user with uuid ${connectedClient.id}" >> clients.update(_ + (connectedClient.id -> connectedClient))
 
-  private def handleClient(client: ConnectedClient[F]): Stream[F, Stanza] =
-    client.messageSocket.read.map(Stanza.parseXML).unNone
+  private def handleClient(client: ConnectedClient[F]): Stream[F, (Stanza, UUID)] =
+    client.messageSocket.read.map(Stanza.parseXML).unNone.map(stanza => stanza -> client.id)
 }
 
 object TCPServer {
