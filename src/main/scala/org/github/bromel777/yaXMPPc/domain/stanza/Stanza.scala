@@ -34,12 +34,14 @@ object Stanza {
     scala.xml.XML.loadString(input) match {
       case iq if iq.label == "IQ" => Iq().some
       case presence if presence.label == "Presence" => Presence().some
-      case message if message.label == "Message" =>
+      case message if message.label == "message" =>
         val sender = (message \ "@from").mkString
         val receiver = (message \ "@to").mkString
         val body = (message \\ "body").mkString
         Message(Sender(sender), Receiver(receiver), body).some
-      case _ => none
+      case res =>
+        println(s"Receive: ${res}")
+        none
     }
 }
 

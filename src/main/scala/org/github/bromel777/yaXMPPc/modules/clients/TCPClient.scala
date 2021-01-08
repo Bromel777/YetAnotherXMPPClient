@@ -2,35 +2,36 @@ package org.github.bromel777.yaXMPPc.modules.clients
 
 import java.net.InetSocketAddress
 
-import cats.effect.concurrent.Ref
-import cats.effect.{Concurrent, ContextShift}
+import cats.syntax.traverse._
+import cats.effect.concurrent.{MVar, MVar2}
+import cats.effect.{Concurrent, ContextShift, Sync}
 import fs2.Stream
+import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
-import monix.catnap.MVar
-import org.github.bromel777.yaXMPPc.domain.stanza.Stanza
+import org.github.bromel777.yaXMPPc.domain.stanza.{Message, Receiver, Sender, Stanza}
 import org.github.bromel777.yaXMPPc.modules.MessageSocket
-import scodec.Codec
+import tofu.common.Console
 import tofu.logging.Logging
 import tofu.syntax.logging._
 import tofu.syntax.monadic._
 
-final class TCPClient[F[_]: Concurrent: ContextShift: Logging](
+final class TCPClient[F[_]: Concurrent: ContextShift: Logging: Console](
   host2connect: String,
   port2connect: Int,
   socketGroup: SocketGroup,
-  openSocket: MVar[F, MessageSocket[F, String, String]]
+  queue2send: Queue[F, Stanza]
 ) extends Client[F, Stanza, Stanza] {
 
   import scodec.codecs.utf8
 
-  override def send(out: Stanza): F[Unit] =
-    openSocket.isEmpty.ifM(
-      openSocket.read.flatMap(_.write1(Stanza.toXML(out))),
-      warn"Impossible to write to socket. Cause it's closed."
-    )
+  override def send(out: Stanza): F[Unit] = queue2send.enqueue1(out) >> info"enqueue"
 
   private def processIncoming(socket: MessageSocket[F, String, String]): Stream[F, Stanza] =
     socket.read.map(Stanza.parseXML).unNone
+
+  private def processOutgoing(socket: MessageSocket[F, String, String]): Stream[F, Unit] =
+    //Stream.repeatEval(Console[F].readStrLn).map(_ => Stanza.toXML(Message(Sender("Me"), Receiver("Alice"), "test"))).evalTap(st => info"${st.toString}").evalMap(socket.write1)
+    queue2send.dequeue.evalMap(stanza => info"write: ${stanza.toString}" >> socket.write1(Stanza.toXML(stanza)))
 
   override def read: Stream[F, Stanza] =
     Stream.eval(info"Start tcp connection to $host2connect:$port2connect") >>
@@ -47,19 +48,19 @@ final class TCPClient[F[_]: Concurrent: ContextShift: Logging](
             )
           )
           .flatMap { socket =>
-            Stream.eval(openSocket.put(socket)) >> processIncoming(socket)
+            processIncoming(socket) concurrently processOutgoing(socket)
           }
       }
 }
 
 object TCPClient {
 
-  def make[F[_]: Concurrent: ContextShift: Logging](
+  def make[F[_]: Concurrent: ContextShift: Logging: Console](
     host2connect: String,
     port2connect: Int,
     socketGroup: SocketGroup
   ): F[Client[F, Stanza, Stanza]] =
-    MVar.empty[F, MessageSocket[F, String, String]]().map { mvar =>
-      new TCPClient[F](host2connect, port2connect, socketGroup, mvar)
+    Queue.bounded[F, Stanza](100).map { qu =>
+      new TCPClient[F](host2connect, port2connect, socketGroup, qu)
     }
 }

@@ -1,36 +1,43 @@
 package org.github.bromel777.yaXMPPc.programs.xmpp
 
-import cats.effect.{Concurrent, ContextShift, Timer}
+import cats.effect.{Concurrent, ContextShift, Sync, Timer}
 import fs2.Stream
+import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
 import org.github.bromel777.yaXMPPc.configs.XMPPClientSettings
-import org.github.bromel777.yaXMPPc.domain.stanza.Stanza
+import org.github.bromel777.yaXMPPc.domain.stanza.{Message, Receiver, Sender, Stanza}
 import org.github.bromel777.yaXMPPc.modules.clients.{Client, TCPClient}
 import org.github.bromel777.yaXMPPc.programs.Program
+import tofu.common.Console
 import tofu.logging.{Logging, Logs}
 import tofu.syntax.logging._
 import tofu.syntax.monadic._
 
 import scala.concurrent.duration._
 
-final class XMPPClientProgram[F[_]: Logging: Timer] private (
+final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private (
   settings: XMPPClientSettings,
   tcpClient: Client[F, Stanza, Stanza]
 ) extends Program[F] {
 
-  override def run: Stream[F, Unit] = Stream.eval(info"Xmpp client started!") >> mainPipe.evalMap { stanza =>
-    info"Receive: ${stanza.toString}"
-  }
+  override def run(commandsQueue: Queue[F, String]): Stream[F, Unit] =
+    Stream.eval(info"Xmpp client started!") >> (processIncoming concurrently executeCommand(commandsQueue))
 
-  private def mainPipe: Stream[F, Stanza] =
-    tcpClient.read
+  private def processIncoming: Stream[F, Unit] =
+    tcpClient.read.evalMap(stanza => Console[F].putStrLn(s"Receive: ${stanza.toString}"))
       .onComplete(
         Stream.eval(warn"Connection to XMPP server was closed! Retry after 3 Seconds") >> Stream.sleep(
           3 seconds
-        ) >> mainPipe
+        ) >> processIncoming
       )
 
-  override def executeCommand(command: String): F[Unit] = ???
+  override def executeCommand(commandsQueue: Queue[F, String]): Stream[F, Unit] =
+    commandsQueue.dequeue.evalMap {
+      case "Send data" =>
+        val messageStanza: Message = Message(Sender("Me"), Receiver("Alice"), "test")
+        Sync[F].delay(println("test123")) >> tcpClient.send(messageStanza)
+      case _ => Sync[F].delay(println("test")) >> ().pure[F]
+    }
 }
 
 object XMPPClientProgram {
