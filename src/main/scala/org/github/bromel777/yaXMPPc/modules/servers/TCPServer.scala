@@ -45,7 +45,7 @@ final class TCPServer[F[_]: Concurrent: ContextShift: Logging](
 
   override def send(out: Stanza, user: UUID): F[Unit] =
     clients.get.flatMap(_.find(_._1 == user).traverse {
-      case (_, client) => client.messageSocket.write1(out)
+      case (_, client) => client.messageSocket.write1(Stanza.toXML(out))
     }.void)
 
   private def setOfflineStatus(connectedClient: ConnectedClient[F]): F[Unit] =
@@ -55,7 +55,7 @@ final class TCPServer[F[_]: Concurrent: ContextShift: Logging](
     info"New connection from user with uuid ${connectedClient.id}" >> clients.update(_ + (connectedClient.id -> connectedClient))
 
   private def handleClient(client: ConnectedClient[F]): Stream[F, Stanza] =
-    client.messageSocket.read
+    client.messageSocket.read.map(Stanza.parseXML).unNone
 }
 
 object TCPServer {

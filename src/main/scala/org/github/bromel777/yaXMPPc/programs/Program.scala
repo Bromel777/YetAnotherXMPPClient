@@ -7,6 +7,6 @@ import tofu.higherKind.derived.embed
 
 @derive(embed)
 trait Program[F[_]] {
-
   def run: Stream[F, Unit]
+  def executeCommand(command: String): F[Unit]
 }

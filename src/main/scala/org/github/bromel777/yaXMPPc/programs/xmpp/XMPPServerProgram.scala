@@ -16,6 +16,8 @@ final class XMPPServerProgram[F[_]: Concurrent: ContextShift: Logging] private (
   override def run: Stream[F, Unit] =
     Stream.eval(info"Xmpp server started!") >> tcpServer.receiverStream
       .evalMap(stanza => info"Receive next stanza: ${stanza.toString}")
+
+  override def executeCommand(command: String): F[Unit] = ???
 }
 
 object XMPPServerProgram {

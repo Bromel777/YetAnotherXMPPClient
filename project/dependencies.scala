@@ -64,6 +64,10 @@ object dependencies {
     "org.scodec" %% "scodec-stream" % versions.scodecStream
   )
 
+  val XML: List[ModuleID] = List(
+    "org.scala-lang.modules" %% "scala-xml" % versions.xml
+  )
+
   val CompilerPlugins: List[ModuleID] =
     List(
       compilerPlugin(

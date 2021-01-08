@@ -29,6 +29,8 @@ final class XMPPClientProgram[F[_]: Logging: Timer] private (
           3 seconds
         ) >> mainPipe
       )
+
+  override def executeCommand(command: String): F[Unit] = ???
 }
 
 object XMPPClientProgram {

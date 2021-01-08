@@ -21,6 +21,7 @@ object versions {
   val slf4j              = "1.7.25"
   val scodec             = "1.11.7"
   val scodecStream       = "2.0.0"
+  val xml                = "2.0.0-M3"
 
   val KindProjector = "0.11.0"
   val MacroParadise = "2.1.1"

@@ -2,28 +2,45 @@ package org.github.bromel777.yaXMPPc.domain.stanza
 
 import scodec.Codec
 import scodec.codecs.{uint4, Discriminated}
+import cats.syntax.option._
 
 sealed trait Stanza
 
 final case class Iq() extends Stanza
 final case class Presence() extends Stanza
-final case class Message(sender: Sender, receiver: Receiver) extends Stanza
+final case class Message(sender: Sender, receiver: Receiver, value: String) extends Stanza
 
 final case class Sender(value: String)
 final case class Receiver(value: String)
 
 object Stanza {
 
-  import scodec.codecs.implicits._
+  import scala.xml._
 
-  implicit def stanzasVals = Discriminated[Stanza, Int](uint4)
-  implicit def iqVal = stanzasVals.bind[Iq](0)
-  implicit def presenceVal = stanzasVals.bind[Presence](1)
-  implicit def msgVal = stanzasVals.bind[Message](2)
+  def toXML(stanza: Stanza): String = stanza match {
+    case Iq() =>
+      (<IQ>
+      </IQ>).toString()
+    case Presence() =>
+      (<Presence>
+      </Presence>).toString()
+    case Message(sender, receiver, value) =>
+      (<message from={sender.value} to={receiver.value}>
+        <body>{value}</body>
+      </message>).toString()
+  }
 
-  val senderCodec = Codec[Sender]
-  val receiverCode = Codec[Receiver]
-  val stanzaCodec          = Codec[Stanza]
+  def parseXML(input: String): Option[Stanza] =
+    scala.xml.XML.loadString(input) match {
+      case iq if iq.label == "IQ" => Iq().some
+      case presence if presence.label == "Presence" => Presence().some
+      case message if message.label == "Message" =>
+        val sender = (message \ "@from").mkString
+        val receiver = (message \ "@to").mkString
+        val body = (message \\ "body").mkString
+        Message(Sender(sender), Receiver(receiver), body).some
+      case _ => none
+    }
 }
 
 

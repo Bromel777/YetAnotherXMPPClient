@@ -12,6 +12,8 @@ import tofu.syntax.monadic._
 final class CAServerProgram[F[_]: Logging] private(settings: CASettings) extends Program[F] {
 
   override def run: Stream[F, Unit] = Stream.eval(info"CA server started!")
+
+  override def executeCommand(command: String): F[Unit] = ???
 }
 
 object CAServerProgram {

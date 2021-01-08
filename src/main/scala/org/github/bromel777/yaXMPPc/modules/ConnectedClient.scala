@@ -8,20 +8,22 @@ import org.github.bromel777.yaXMPPc.domain.stanza.Stanza
 import tofu.logging.Logging
 import tofu.syntax.monadic._
 
-final case class ConnectedClient[F[_]] (
+final case class ConnectedClient[F[_]](
   id: UUID,
-  messageSocket: MessageSocket[F, Stanza, Stanza]
+  messageSocket: MessageSocket[F, String, String]
 )
 
 private object ConnectedClient {
+
+  import scodec.codecs.utf8
 
   def apply[F[_]: Concurrent: Logging](socket: Socket[F]): F[ConnectedClient[F]] =
     for {
       id <- Sync[F].delay(UUID.randomUUID)
       messageSocket <- MessageSocket(
                          socket,
-                         Stanza.stanzaCodec,
-                         Stanza.stanzaCodec,
+                         utf8,
+                         utf8,
                          1024
                        )
     } yield new ConnectedClient(id, messageSocket)
