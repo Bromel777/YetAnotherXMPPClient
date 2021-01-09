@@ -34,9 +34,9 @@ object Storage {
       trace"Trying to get ${key.toString} from storage" >> map.get.map(_.get(key))
 
     override def contains(key: K): F[Boolean] =
-      trace"Check if storage contains ${key}" >> map.get.map(_.contains(key))
+      trace"Check if storage contains ${key.toString}" >> map.get.map(_.contains(key))
 
     override def delete(key: K): F[Unit] =
-      trace"Delete key ${key} from storage" >> map.update(_ - key)
+      trace"Delete key ${key.toString} from storage" >> map.update(_ - key)
   }
 }

@@ -68,6 +68,10 @@ object dependencies {
     "org.scala-lang.modules" %% "scala-xml" % versions.xml
   )
 
+  val BC: List[ModuleID] = List(
+    "org.bouncycastle" % "bcprov-jdk15on" % versions.bc
+  )
+
   val CompilerPlugins: List[ModuleID] =
     List(
       compilerPlugin(

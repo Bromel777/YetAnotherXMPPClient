@@ -5,6 +5,7 @@ import cats.effect.{Concurrent, ContextShift, Sync, Timer}
 import fs2.io.tcp.SocketGroup
 import org.github.bromel777.yaXMPPc.context.{AppContext, HasAppContext}
 import org.github.bromel777.yaXMPPc.errors.Err
+import org.github.bromel777.yaXMPPc.services.Cryptography
 import tofu.Raise.ContravariantRaise
 import tofu.logging.Logs
 import tofu.syntax.monadic._
@@ -15,7 +16,8 @@ package object programs {
 
   def getProgram[F[_]: HasAppContext: Concurrent: ContextShift: ContravariantRaise[*[_], Err]: Timer](
     progName: String,
-    socketGroup: SocketGroup
+    socketGroup: SocketGroup,
+    cryptography: Cryptography[F]
   )(implicit logs: Logs[F, F]): Program[F] =
     (tofu.syntax.context.context[F] flatMap { (ctx: AppContext) =>
       progName match {

@@ -8,6 +8,7 @@ import org.github.bromel777.yaXMPPc.configs.XMPPClientSettings
 import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.{Message, Receiver, Sender, Stanza}
 import org.github.bromel777.yaXMPPc.modules.clients.{Client, TCPClient}
 import org.github.bromel777.yaXMPPc.programs.Program
+import org.github.bromel777.yaXMPPc.programs.cli.Command
 import tofu.common.Console
 import tofu.logging.{Logging, Logs}
 import tofu.syntax.logging._
@@ -17,10 +18,10 @@ import scala.concurrent.duration._
 
 final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private (
   settings: XMPPClientSettings,
-  tcpClient: Client[F, Stanza, Stanza]
+  tcpClient: Client[F, Stanza, Stanza],
 ) extends Program[F] {
 
-  override def run(commandsQueue: Queue[F, String]): Stream[F, Unit] =
+  override def run(commandsQueue: Queue[F, Command]): Stream[F, Unit] =
     Stream.eval(info"Xmpp client started!") >> (processIncoming concurrently executeCommand(commandsQueue))
 
   private def processIncoming: Stream[F, Unit] =
@@ -31,11 +32,11 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
         ) >> processIncoming
       )
 
-  override def executeCommand(commandsQueue: Queue[F, String]): Stream[F, Unit] =
+  override def executeCommand(commandsQueue: Queue[F, Command]): Stream[F, Unit] =
     commandsQueue.dequeue.evalMap {
-      case "Send data" =>
-        val messageStanza: Message = Message(Sender("Me"), Receiver("Alice"), "test")
-        tcpClient.send(messageStanza)
+//      case "Send data" =>
+//        val messageStanza: Message = Message(Sender("Me"), Receiver("Alice"), "test")
+//        tcpClient.send(messageStanza)
       case _ => Sync[F].delay(println("test")) >> ().pure[F]
     }
 }

@@ -10,7 +10,8 @@ import org.github.bromel777.yaXMPPc.configs.AppConfig
 import org.github.bromel777.yaXMPPc.context.{AppContext, HasAppContext}
 import org.github.bromel777.yaXMPPc.errors.Err
 import org.github.bromel777.yaXMPPc.programs.Program
-import org.github.bromel777.yaXMPPc.programs.cli.CLIProgram
+import org.github.bromel777.yaXMPPc.programs.cli.{CLIProgram, Command}
+import org.github.bromel777.yaXMPPc.services.Cryptography
 import tofu.Raise.ContravariantRaise
 import tofu.WithRun
 import tofu.env.Env
@@ -35,7 +36,7 @@ object Application extends TaskApp {
     (Args.read[InitF](args) >>= (argsList =>
         AppConfig.load[InitF](argsList.configPathOpt) >>= { cfg =>
           mkResources[InitF, AppF](cfg).use { programs =>
-            Stream.eval(Queue.bounded[AppF, String](100)).flatMap { queue =>
+            Stream.eval(Queue.bounded[AppF, Command](100)).flatMap { queue =>
               Stream
                 .emits(
                   programs.map(
@@ -52,16 +53,18 @@ object Application extends TaskApp {
       Sync[InitF].delay(println(s"Error during program work pipeline: ${e.msg}")) as ExitCode.Error
     )
 
-  def mkResources[I[_]: Sync, F[_]: Concurrent: HasAppContext: ContextShift: ContravariantRaise[*[_], Error]: Timer](
-    cfg: AppConfig
+  def mkResources[I[+_]: Sync, F[_]: Concurrent: HasAppContext: ContextShift: ContravariantRaise[*[_], Error]: Timer](
+    cfg: AppConfig,
   )(implicit logs: Logs[F, F], blocker: Blocker, withRun: WithRun[F, I, AppContext]): Resource[I, List[Program[F]]] =
-    SocketGroup[F](blocker)
-      .map { socketGroup =>
-        List(programs.getProgram[F](cfg.commonSettings.programType, socketGroup))
-      }
-      .mapK(
-        withRun.runContextK(
-          AppContext(cfg.commonSettings, cfg.XMPPServerSettings, cfg.XMPPClientSettings, cfg.caSettings)
+    Resource.liftF(Cryptography.make[I, F]).flatMap { crypto =>
+      SocketGroup[F](blocker)
+        .map { socketGroup =>
+          List(programs.getProgram[F](cfg.commonSettings.programType, socketGroup, crypto))
+        }
+        .mapK[F, I](
+          withRun.runContextK(
+            AppContext(cfg.commonSettings, cfg.XMPPServerSettings, cfg.XMPPClientSettings, cfg.caSettings)
+          )
         )
-      )
+    }
 }

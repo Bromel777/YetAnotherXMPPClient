@@ -6,15 +6,16 @@ import fs2.Stream
 import fs2.concurrent.Queue
 import org.github.bromel777.yaXMPPc.configs.CASettings
 import org.github.bromel777.yaXMPPc.programs.Program
+import org.github.bromel777.yaXMPPc.programs.cli.Command
 import tofu.logging.{Logging, Logs}
 import tofu.syntax.logging._
 import tofu.syntax.monadic._
 
 final class CAServerProgram[F[_]: Logging] private(settings: CASettings) extends Program[F] {
 
-  override def run(commandsQueue: Queue[F, String]): Stream[F, Unit] = Stream.eval(info"CA server started!")
+  override def run(commandsQueue: Queue[F, Command]): Stream[F, Unit] = Stream.eval(info"CA server started!")
 
-  override def executeCommand(commandsQueue: Queue[F, String]): Stream[F, Unit] = ???
+  override def executeCommand(commandsQueue: Queue[F, Command]): Stream[F, Unit] = ???
 }
 
 object CAServerProgram {
