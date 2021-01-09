@@ -30,17 +30,20 @@ object Stanza {
       case UnknownIq =>
         (<iq></iq>).toString()
       case IqX3DHInit(spkPub, ikPub, sig) =>
+        println(encoder.encodeToString(spkPub.getEncoded))
+        println(encoder.encodeToString(ikPub.getEncoded))
+        println(encoder.encodeToString(sig))
         (
         <iq type="set">
           <x3dhmirea xmlns="mirea:diplom:x3dh">
             <SPK>
-              {encoder.encode(spkPub.getEncoded)}
+              {encoder.encodeToString(spkPub.getEncoded)}
             </SPK>
             <ikpub>
-              {encoder.encode(ikPub.getEncoded)}
+              {encoder.encodeToString(ikPub.getEncoded)}
             </ikpub>
             <sig>
-              {encoder.encode(sig)}
+              {encoder.encodeToString(sig)}
             </sig>
           </x3dhmirea>
         </iq>
@@ -59,10 +62,17 @@ object Stanza {
   def parseXML(input: String): Option[Stanza] =
     scala.xml.XML.loadString(input) match {
       case iq if iq.label == "iq" && (iq \\ "x3dhmirea").nonEmpty =>
+        println(s"Iq: ${iq}")
         val x3dh = (iq \\ "x3dhmirea")
-        val spkPubBytes = decoder.decode((x3dh \\ "spk").mkString)
-        val ikPubByte = decoder.decode((x3dh \\ "ikpub").mkString)
-        val sigByte = decoder.decode((x3dh \\ "sig").mkString)
+        println((x3dh \\ "SPK").text)
+        println((x3dh \\ "ikpub").text)
+        println((x3dh \\ "sig").text)
+        println(1)
+        val spkPubBytes = Base64.getDecoder.decode((x3dh \\ "SPK").text.trim)
+        println(2)
+        val ikPubByte = decoder.decode((x3dh \\ "ikpub").text.trim)
+        println(3)
+        val sigByte = decoder.decode((x3dh \\ "sig").text.trim)
         val spkPub = KeyFactory.getInstance("GOST3410", "BC").generatePublic(new X509EncodedKeySpec(spkPubBytes))
         val ikPub = KeyFactory.getInstance("GOST3410", "BC").generatePublic(new X509EncodedKeySpec(ikPubByte))
         IqX3DHInit(
