@@ -14,7 +14,7 @@
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>${logback.file.level:-TRACE}</level>
         </filter>
-        <file>explorer.log</file>
+        <file>application.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- daily rollover -->
             <fileNamePattern>application.%d{yyyy-MM-dd}.log.gz</fileNamePattern>

@@ -46,10 +46,10 @@ object Stanza {
           </x3dhmirea>
         </iq>
         ).toString()
-      case IqAuth(str, signature, publicKey) =>
+      case IqAuth(msg, signature, publicKey) =>
         <iq type="set">
         <auth xmlns="mirea:diplom:auth">
-        <str>{encoder.encode(str)}</str>
+        <str>{encoder.encodeToString(msg)}</str>
         <signature>{encoder.encodeToString(signature)}</signature>
         <publickey>{encoder.encodeToString(publicKey.getEncoded)}</publickey>
         </auth>
@@ -75,7 +75,6 @@ object Stanza {
   def parseXML(input: String): Option[Stanza] =
     scala.xml.XML.loadString(input) match {
       case iq if iq.label == "iq" && (iq \\ "x3dhmirea").nonEmpty =>
-        println(s"Iq: $iq")
         val x3dh        = iq \\ "x3dhmirea"
         val spkPubBytes = Base64.getDecoder.decode((x3dh \\ "SPK").text.trim)
         val ikPubByte   = decoder.decode((x3dh \\ "ikpub").text.trim)
@@ -89,7 +88,7 @@ object Stanza {
         ).some
       case iqAuth if iqAuth.label == "iq" && (iqAuth \\ "auth").nonEmpty =>
         val auth           = iqAuth \\ "auth"
-        val str            = decoder.decode((auth \\ "str").text)
+        val str            = decoder.decode((auth \\ "str").text.trim)
         val signature      = decoder.decode((auth \\ "signature").text.trim)
         val publicKeyBytes = decoder.decode((auth \\ "publickey").text.trim)
         val publicKey      = KeyFactory.getInstance("GOST3410", "BC").generatePublic(new X509EncodedKeySpec(publicKeyBytes))

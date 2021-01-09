@@ -10,9 +10,11 @@ import tofu.common.Console
 
 final class CLIProgram[F[_]: Console](commandsQueue: Queue[F, Command]) {
 
-  def run: Stream[F, Unit] = Stream.repeatEval(Console[F].readStrLn)
-    .map(parseCommand)
-    .evalMap(commandsQueue.enqueue1)
+  def run: Stream[F, Unit] =
+    Stream
+      .repeatEval(Console[F].readStrLn)
+      .map(parseCommand)
+      .evalMap(commandsQueue.enqueue1)
 
   private def parseCommand(input: String): Command =
     input.split(" ").toList match {
@@ -21,8 +23,8 @@ final class CLIProgram[F[_]: Console](commandsQueue: Queue[F, Command]) {
       case "DeleteKeyPair" :: Nil                  => DeleteKeyPair
       case "ProduceKeysForX3DH" :: Nil             => ProduceKeysForX3DH
       case "InitSecureSession" :: receiver :: Nil  => InitSecureSession(Receiver(receiver))
-      case "Login" :: Nil                          => Login
       case "Register" :: name :: Nil               => Register(name)
+      case "Auth" :: Nil                           => Auth
       case "ShowActiveSessions" :: Nil             => ShowActiveSessions
       case "ShowActivePublicKeys" :: Nil           => ShowActivePublicKeys
     }

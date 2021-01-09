@@ -12,7 +12,7 @@ import scala.collection.immutable.HashMap
 trait Storage[F[_], K, V] {
   def put(key: K, value: V): F[Unit]
   def get(key: K): F[Option[V]]
-  def find(func: (K, V) => Boolean): F[Option[(K, V)]]
+  def find(func: ((K, V)) => Boolean): F[Option[(K, V)]]
   def contains(key: K): F[Boolean]
   def delete(key: K): F[Unit]
 }
@@ -40,7 +40,7 @@ object Storage {
     override def delete(key: K): F[Unit] =
       trace"Delete key ${key.toString} from storage" >> map.update(_ - key)
 
-    override def find(func: (K, V) => Boolean): F[Option[(K, V)]] =
-      trace"Going to find key by func" >> map.get.map(_.find(func(_)))
+    override def find(func: ((K, V)) => Boolean): F[Option[(K, V)]] =
+      trace"Going to find key by func" >> map.get.map(_.find(elem => func(elem)))
   }
 }
