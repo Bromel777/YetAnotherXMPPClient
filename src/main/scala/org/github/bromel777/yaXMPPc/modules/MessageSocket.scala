@@ -30,7 +30,7 @@ object MessageSocket {
       def read: Stream[F, In] = {
         def readSocket: Stream[F, In] =
           socket
-            .reads(1024)
+            .reads(4096)
             .through(StreamDecoder.many(inDecoder).toPipeByte[F])
             .handleErrorWith {
               case codecError: CodecError =>

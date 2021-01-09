@@ -10,7 +10,7 @@ import org.github.bromel777.yaXMPPc.configs.XMPPServerSettings
 import org.github.bromel777.yaXMPPc.domain.sessions.XMPPServerSession
 import org.github.bromel777.yaXMPPc.domain.user.UserInfo
 import org.github.bromel777.yaXMPPc.domain.xmpp.JId
-import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.{Iq, Message, Presence, Stanza}
+import org.github.bromel777.yaXMPPc.domain.xmpp.stanza._
 import org.github.bromel777.yaXMPPc.modules.servers.TCPServer
 import org.github.bromel777.yaXMPPc.programs.Program
 import org.github.bromel777.yaXMPPc.programs.cli.Command
@@ -24,7 +24,8 @@ final class XMPPServerProgram[F[_]: Concurrent: ContextShift: Logging] private (
   tcpServer: TCPServer[F],
   sessions: Map[UUID, XMPPServerSession],
   usersStorage: Storage[F, JId, UserInfo],
-  stanzaBuffer: Storage[F, JId, Stanza]
+  stanzaBuffer: Storage[F, JId, Stanza],
+  x3dhStanzas: Storage[F, JId, IqX3DHInit]
 ) extends Program[F] {
 
   override def run(commandsQueue: Queue[F, Command]): Stream[F, Unit] =
@@ -37,15 +38,28 @@ final class XMPPServerProgram[F[_]: Concurrent: ContextShift: Logging] private (
       case (message: Message, uuid) =>
         sessions.find(_._2.jid.contains(JId(message.receiver.value))) match {
           case Some((sessionUUId, session)) =>
-            trace"Receive msg stanza from ${message.sender.value} to ${message.receiver.value}. Going to send msg to receiver (Session uuid: ${sessionUUId})." >> tcpServer.send(message, sessionUUId)
+            trace"Receive msg stanza from ${message.sender.value} to ${message.receiver.value}. Going to send msg to receiver (Session uuid: $sessionUUId)." >> tcpServer
+              .send(message, sessionUUId)
           case None =>
             trace"Receive msg stanza from ${message.sender.value} to ${message.receiver.value}. But there is no one active session with receiver. Put msg to buffer"
         }
-      case (iq: Iq, uuid)             =>
+      case (x3DHInit: IqX3DHInit, uuid) =>
+        for {
+          _ <- trace"Trying to register x3dh for user with uuid $uuid"
+          userJid = sessions(uuid)
+          _ <- userJid.jid match {
+            case Some(value) =>
+              x3dhStanzas.put(value, x3DHInit) >> trace"Registration complete!"
+            case None =>
+              val errorStanza = IqError("Register your jid before publishing x3dh init msg")
+              tcpServer.send(errorStanza, uuid)
+          }
+        } yield ()
+      case (iq: Iq, uuid) =>
         trace"Receive iq stanza: ${iq.toString} from ${uuid.toString}"
       case (presence: Presence, uuid) =>
         trace"Receive presence stanza: ${presence.toString} from ${uuid.toString}"
-      case (_, uuid)                  => warn"Unknown stanza from ${uuid.toString}"
+      case (_, uuid) => warn"Unknown stanza from ${uuid.toString}"
     }
 }
 
@@ -56,9 +70,10 @@ object XMPPServerProgram {
   ): F[Program[F]] =
     for {
       implicit0(logging: Logging[F]) <- logs.forService[XMPPServerProgram[F]]
-      server <- TCPServer.make[F](settings, socketGroup)
+      server                         <- TCPServer.make[F](settings, socketGroup)
       sessionsMap = Map.empty[UUID, XMPPServerSession]
       usersStorage <- Storage.makeMapStorage[F, JId, UserInfo]
       stanzaBuffer <- Storage.makeMapStorage[F, JId, Stanza]
-    } yield new XMPPServerProgram(settings, server, sessionsMap, usersStorage, stanzaBuffer)
+      x3dhStorage  <- Storage.makeMapStorage[F, JId, IqX3DHInit]
+    } yield new XMPPServerProgram(settings, server, sessionsMap, usersStorage, stanzaBuffer, x3dhStorage)
 }

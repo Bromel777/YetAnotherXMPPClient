@@ -7,7 +7,7 @@ import fs2.Stream
 import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
 import org.github.bromel777.yaXMPPc.configs.XMPPClientSettings
-import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.Stanza
+import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.{IqX3DHInit, Stanza}
 import org.github.bromel777.yaXMPPc.modules.clients.{Client, TCPClient}
 import org.github.bromel777.yaXMPPc.programs.Program
 import org.github.bromel777.yaXMPPc.programs.cli.Command
@@ -60,8 +60,11 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
           _ <- trace"Start producing keys for X3DH"
           spkPair <- cryptography.produceKeyPair
           _ <- trace"SPK Pair produced!"
+          _ <- keysStorage.put("spk", spkPair)
           spkPublicSignature <- cryptography.sign(mainKeyPair._1, spkPair._2.getEncoded)
           _ <- trace"Create spkKey ${new String(spkPair._2.getEncoded)}, signature ${new String(spkPublicSignature)}"
+          iqX3DH = IqX3DHInit(spkPair._2, mainKeyPair._2, spkPublicSignature)
+          _ <- tcpClient.send(iqX3DH)
         } yield ()
       case _ => Sync[F].delay(println("test")) >> ().pure[F]
     }
