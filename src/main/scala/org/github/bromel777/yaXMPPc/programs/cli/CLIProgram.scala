@@ -10,7 +10,9 @@ import tofu.common.Console
 
 final class CLIProgram[F[_]: Console](commandsQueue: Queue[F, Command]) {
 
-  def run: Stream[F, Unit] = Stream.repeatEval(Console[F].readStrLn).map(parseCommand).evalMap(commandsQueue.enqueue1)
+  def run: Stream[F, Unit] = Stream.repeatEval(Console[F].readStrLn)
+    .map(parseCommand)
+    .evalMap(commandsQueue.enqueue1)
 
   private def parseCommand(input: String): Command =
     input.split(" ").toList match {

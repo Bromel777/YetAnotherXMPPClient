@@ -22,7 +22,7 @@ package object programs {
     (tofu.syntax.context.context[F] flatMap { (ctx: AppContext) =>
       progName match {
         case "xmppClient" if ctx.XMPPClientSettings.isDefined =>
-          xmpp.XMPPClientProgram.make[F](ctx.XMPPClientSettings.get, socketGroup)
+          xmpp.XMPPClientProgram.make[F](ctx.XMPPClientSettings.get, socketGroup, cryptography)
         case "xmppClient" =>
           Err("Impossible to run XMPP Client with empty settings!").raise[F, Program[F]]
         case "xmppServer" if ctx.XMPPServerSettings.isDefined =>
