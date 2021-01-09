@@ -7,11 +7,11 @@ import fs2.Stream
 import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
 import org.github.bromel777.yaXMPPc.configs.XMPPClientSettings
-import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.{IqX3DHInit, Stanza}
+import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.{Iq, IqAuth, IqError, IqRegister, IqX3DHInit, Message, Presence, Stanza}
 import org.github.bromel777.yaXMPPc.modules.clients.{Client, TCPClient}
 import org.github.bromel777.yaXMPPc.programs.Program
 import org.github.bromel777.yaXMPPc.programs.cli.Command
-import org.github.bromel777.yaXMPPc.programs.cli.XMPPClientCommand.{DeleteKeyPair, ProduceKeyPair, ProduceKeysForX3DH}
+import org.github.bromel777.yaXMPPc.programs.cli.XMPPClientCommand.{Auth, DeleteKeyPair, ProduceKeyPair, ProduceKeysForX3DH, Register}
 import org.github.bromel777.yaXMPPc.services.Cryptography
 import org.github.bromel777.yaXMPPc.storage.Storage
 import tofu.common.Console
@@ -20,6 +20,7 @@ import tofu.syntax.logging._
 import tofu.syntax.monadic._
 
 import scala.concurrent.duration._
+import scala.util.Random
 
 final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private (
   settings: XMPPClientSettings,
@@ -33,12 +34,18 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
 
   private def processIncoming: Stream[F, Unit] =
     tcpClient.read
-      .evalMap(stanza => Console[F].putStrLn(s"Receive: ${stanza.toString}"))
+      .evalMap(handleStanza)
       .onComplete(
         Stream.eval(warn"Connection to XMPP server was closed! Retry after 3 Seconds") >> Stream.sleep(
           3 seconds
         ) >> processIncoming
       )
+
+  private def handleStanza(stanza: Stanza): F[Unit] = stanza match {
+    case iq: IqError => info"Receive error stanza: ${iq.errDesc}"
+    case Message(sender, _, value) => info"Receive message from ${sender.value.toString}. Message: $value"
+    case _ => info"Receive stanza: ${stanza.toString}"
+  }
 
   override def executeCommand(commandsQueue: Queue[F, Command]): Stream[F, Unit] =
     commandsQueue.dequeue.evalMap {
@@ -48,11 +55,36 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
         }
       case DeleteKeyPair =>
         trace"Delete main key pair from storage, if it's exist" >> keysStorage.delete("Main key pair")
+      case Register(name) =>
+        for {
+          _ <- trace"Going to register client with name: $name"
+          mainKeyPairOpt <- keysStorage.get("Main key pair")
+          mainKeyPair <- mainKeyPairOpt match {
+            case Some(value) => trace"Main key pair found." >> value.pure[F]
+            case None => cryptography.produceKeyPair.flatMap { keyPair =>
+              trace"Main key pair produced!" >> keysStorage.put("Main key pair", keyPair) >> keyPair.pure[F]
+            }
+          }
+          registerStanza = IqRegister(name, mainKeyPair._2)
+          _ <- tcpClient.send(registerStanza)
+        } yield ()
+      case Auth =>
+        keysStorage.get("Main key pair").flatMap {
+          case Some(value) =>
+            val r = new Random
+            val msg = r.nextLong().toString.getBytes()
+            for {
+              signature <- cryptography.sign(value._1, msg)
+              authStanza = IqAuth(msg, signature, value._2)
+              _ <- tcpClient.send(authStanza)
+            } yield ()
+          case None => info"Couldn't find main key pair. Please create it and register!"
+        }
       case ProduceKeysForX3DH =>
         for {
           mainKeyPairOpt <- keysStorage.get("Main key pair")
           mainKeyPair <- mainKeyPairOpt match {
-            case Some(value) => value.pure[F]
+            case Some(value) => trace"Main key pair found." >> value.pure[F]
             case None => cryptography.produceKeyPair.flatMap { keyPair =>
               trace"Main key pair produced!" >> keysStorage.put("Main key pair", keyPair) >> keyPair.pure[F]
             }

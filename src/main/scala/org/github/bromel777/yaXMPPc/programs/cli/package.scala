@@ -14,6 +14,7 @@ package object cli {
     case object ProduceKeysForX3DH extends XMPPClientCommand
     case class InitSecureSession(receiver: Receiver) extends XMPPClientCommand
     case class Register(name: String) extends XMPPClientCommand
+    case object Auth extends XMPPClientCommand
     case object Login extends XMPPClientCommand
   }
   sealed trait XMPPServerCommand extends Command

@@ -30,8 +30,7 @@ final class TCPClient[F[_]: Concurrent: ContextShift: Logging: Console](
     socket.read.map(Stanza.parseXML).unNone
 
   private def processOutgoing(socket: MessageSocket[F, String, String]): Stream[F, Unit] =
-    //Stream.repeatEval(Console[F].readStrLn).map(_ => Stanza.toXML(Message(Sender("Me"), Receiver("Alice"), "test"))).evalTap(st => info"${st.toString}").evalMap(socket.write1)
-    queue2send.dequeue.evalMap(stanza => info"write: ${stanza.toString}" >> socket.write1(Stanza.toXML(stanza)))
+    queue2send.dequeue.evalMap(stanza => socket.write1(Stanza.toXML(stanza)))
 
   override def read: Stream[F, Stanza] =
     Stream.eval(info"Start tcp connection to $host2connect:$port2connect") >>
