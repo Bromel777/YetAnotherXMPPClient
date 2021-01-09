@@ -27,9 +27,6 @@ object Cryptography {
     override def produceKeyPair: F[(PrivateKey, PublicKey)] =
       Sync[F].delay {
         val f = KeyPairGenerator.getInstance("GOST3410", "BC")
-        import org.bouncycastle.jcajce.spec.GOST3410ParameterSpec
-        val gost3410P = new GOST3410ParameterSpec(CryptoProObjectIdentifiers.gostR3410_94_CryptoPro_A.getId)
-        f.initialize(gost3410P, new SecureRandom())
         val pair                   = f.generateKeyPair
         val privateKey: PrivateKey = pair.getPrivate
         val publicKey: PublicKey   = pair.getPublic
