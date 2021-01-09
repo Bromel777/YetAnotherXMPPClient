@@ -1,4 +1,4 @@
-package org.github.bromel777.yaXMPPc.domain.stanza
+package org.github.bromel777.yaXMPPc.domain.xmpp.stanza
 
 import scodec.Codec
 import scodec.codecs.{uint4, Discriminated}

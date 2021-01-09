@@ -8,7 +8,7 @@ import cats.effect.{Concurrent, ContextShift, Sync}
 import fs2.Stream
 import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
-import org.github.bromel777.yaXMPPc.domain.stanza.{Message, Receiver, Sender, Stanza}
+import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.{Message, Receiver, Sender, Stanza}
 import org.github.bromel777.yaXMPPc.modules.MessageSocket
 import tofu.common.Console
 import tofu.logging.Logging

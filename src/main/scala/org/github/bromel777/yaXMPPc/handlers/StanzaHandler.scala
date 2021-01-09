@@ -1,6 +1,6 @@
 package org.github.bromel777.yaXMPPc.handlers
 
-import org.github.bromel777.yaXMPPc.domain.stanza.Stanza
+import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.Stanza
 
 final class StanzaHandler[F[_]] private () extends Handler[F, Stanza]{
 

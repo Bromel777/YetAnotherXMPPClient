@@ -9,7 +9,7 @@ import cats.syntax.traverse._
 import fs2.Stream
 import fs2.io.tcp.SocketGroup
 import org.github.bromel777.yaXMPPc.configs.XMPPServerSettings
-import org.github.bromel777.yaXMPPc.domain.stanza.Stanza
+import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.Stanza
 import org.github.bromel777.yaXMPPc.modules.ConnectedClient
 import tofu.logging.Logging
 import tofu.syntax.monadic._
@@ -25,7 +25,7 @@ final class TCPServer[F[_]: Concurrent: ContextShift: Logging](
   serverSettings: XMPPServerSettings,
   socketGroup: SocketGroup,
   clients: Ref[F, HashMap[UUID, ConnectedClient[F]]]
-) extends Server[F, Stanza, Stanza] {
+) extends Server[F, (Stanza, UUID), Stanza] {
 
   override def receiverStream: Stream[F, (Stanza, UUID)] =
     socketGroup

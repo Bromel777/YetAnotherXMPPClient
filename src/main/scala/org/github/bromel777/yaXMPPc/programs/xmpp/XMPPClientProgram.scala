@@ -5,7 +5,7 @@ import fs2.Stream
 import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
 import org.github.bromel777.yaXMPPc.configs.XMPPClientSettings
-import org.github.bromel777.yaXMPPc.domain.stanza.{Message, Receiver, Sender, Stanza}
+import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.{Message, Receiver, Sender, Stanza}
 import org.github.bromel777.yaXMPPc.modules.clients.{Client, TCPClient}
 import org.github.bromel777.yaXMPPc.programs.Program
 import tofu.common.Console

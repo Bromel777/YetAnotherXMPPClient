@@ -4,7 +4,7 @@ import java.util.UUID
 
 import cats.effect.{Concurrent, Sync}
 import fs2.io.tcp.Socket
-import org.github.bromel777.yaXMPPc.domain.stanza.Stanza
+import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.Stanza
 import tofu.logging.Logging
 import tofu.syntax.monadic._
 
