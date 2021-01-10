@@ -2,18 +2,22 @@ package org.github.bromel777.yaXMPPc.programs.xmpp
 
 import java.security.{PrivateKey, PublicKey}
 
+import cats.effect.concurrent.MVar
+import cats.syntax.option._
 import cats.effect.{Concurrent, ContextShift, Sync, Timer}
 import fs2.Stream
 import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
 import org.github.bromel777.yaXMPPc.configs.XMPPClientSettings
-import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.{Iq, IqAuth, IqError, IqRegister, IqX3DHInit, Message, Presence, Stanza}
+import org.github.bromel777.yaXMPPc.domain.xmpp.JId
+import org.github.bromel777.yaXMPPc.domain.xmpp.stanza._
 import org.github.bromel777.yaXMPPc.modules.clients.{Client, TCPClient}
 import org.github.bromel777.yaXMPPc.programs.Program
 import org.github.bromel777.yaXMPPc.programs.cli.Command
-import org.github.bromel777.yaXMPPc.programs.cli.XMPPClientCommand.{Auth, DeleteKeyPair, ProduceKeyPair, ProduceKeysForX3DH, Register}
+import org.github.bromel777.yaXMPPc.programs.cli.XMPPClientCommand._
 import org.github.bromel777.yaXMPPc.services.Cryptography
 import org.github.bromel777.yaXMPPc.storage.Storage
+import scorex.util.encode.Base64
 import tofu.common.Console
 import tofu.logging.{Logging, Logs}
 import tofu.syntax.logging._
@@ -26,8 +30,11 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
   settings: XMPPClientSettings,
   tcpClient: Client[F, Stanza, Stanza],
   cryptography: Cryptography[F],
-  keysStorage: Storage[F, String, (PrivateKey, PublicKey)]
+  keysStorage: Storage[F, String, (PrivateKey, PublicKey)],
+  x3dhCommonKeys: Storage[F, JId, (Array[Byte], Array[Byte])]
 ) extends Program[F] {
+
+  var myJid: Option[String] = none
 
   override def run(commandsQueue: Queue[F, Command]): Stream[F, Unit] =
     Stream.eval(info"Xmpp client started!") >> (processIncoming concurrently executeCommand(commandsQueue))
@@ -41,11 +48,32 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
         ) >> processIncoming
       )
 
-  private def handleStanza(stanza: Stanza): F[Unit] = stanza match {
-    case iq: IqError => info"Receive error stanza: ${iq.errDesc}"
-    case Message(sender, _, value) => info"Receive message from ${sender.value.toString}. Message: $value"
-    case _ => info"Receive stanza: ${stanza.toString}"
-  }
+  private def handleStanza(stanza: Stanza): F[Unit] =
+    stanza match {
+      case iq: IqError => info"Receive error stanza: ${iq.errDesc}"
+      case x3DHParams: IqX3DHParams =>
+        keysStorage.get("Main key pair").flatMap {
+          case Some(value) =>
+            cryptography.produceCommonKeyBySender(value._1, x3DHParams.spkPub, x3DHParams.ikPub).flatMap {
+              case (ekPub, secret) =>
+                info"Secret: ${Base64.encode(secret)}" >> tcpClient
+                  .send(IqX3dhFirstStep(JId(myJid.get), x3DHParams.JId, ekPub, value._2))
+            }
+          case None => warn"Create main key pair and register it, before creation secure channel!"
+        }
+      case x3dhFirstStep: IqX3dhFirstStep =>
+        keysStorage.get("Main key pair").flatMap {
+          case Some((privateKeyI, publicKeyI)) =>
+            keysStorage.get("spk").flatMap {
+              case Some((privateSpk, publicSpk)) =>
+                cryptography.produceCommonKeyByReceiver(privateKeyI, privateSpk, x3dhFirstStep.ekPub, x3dhFirstStep.ikPub).void
+              case None => error"Keys storage was damaged! Impossible to establish secure channel"
+            }
+          case None => error"Keys storage was damaged! Impossible to establish secure channel"
+        }
+      case Message(sender, _, value) => info"Receive message from ${sender.value.toString}. Message: $value"
+      case _                         => info"Receive stanza: ${stanza.toString}"
+    }
 
   override def executeCommand(commandsQueue: Queue[F, Command]): Stream[F, Unit] =
     commandsQueue.dequeue.evalMap {
@@ -55,23 +83,29 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
         }
       case DeleteKeyPair =>
         trace"Delete main key pair from storage, if it's exist" >> keysStorage.delete("Main key pair")
+      case InitSecureSession(receiverJid) =>
+        trace"Trying to get x3dh params for user with jid ${receiverJid.value} from server" >>
+        tcpClient.send(IqGetX3DHParams(receiverJid))
       case Register(name) =>
         for {
-          _ <- trace"Going to register client with name: $name"
+          _              <- trace"Going to register client with name: $name"
           mainKeyPairOpt <- keysStorage.get("Main key pair")
           mainKeyPair <- mainKeyPairOpt match {
-            case Some(value) => trace"Main key pair found." >> value.pure[F]
-            case None => cryptography.produceKeyPair.flatMap { keyPair =>
-              trace"Main key pair produced!" >> keysStorage.put("Main key pair", keyPair) >> keyPair.pure[F]
-            }
-          }
+                           case Some(value) => trace"Main key pair found." >> value.pure[F]
+                           case None =>
+                             cryptography.produceKeyPair.flatMap { keyPair =>
+                               trace"Main key pair produced!" >> keysStorage.put("Main key pair", keyPair) >> keyPair
+                                 .pure[F]
+                             }
+                         }
           registerStanza = IqRegister(name, mainKeyPair._2)
+          _ = (myJid = name.some)
           _ <- tcpClient.send(registerStanza)
         } yield ()
       case Auth =>
         keysStorage.get("Main key pair").flatMap {
           case Some(value) =>
-            val r = new Random
+            val r   = new Random
             val msg = r.nextLong().toString.getBytes()
             for {
               signature <- cryptography.sign(value._1, msg)
@@ -84,17 +118,19 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
         for {
           mainKeyPairOpt <- keysStorage.get("Main key pair")
           mainKeyPair <- mainKeyPairOpt match {
-            case Some(value) => trace"Main key pair found." >> value.pure[F]
-            case None => cryptography.produceKeyPair.flatMap { keyPair =>
-              trace"Main key pair produced!" >> keysStorage.put("Main key pair", keyPair) >> keyPair.pure[F]
-            }
-          }
-          _ <- trace"Start producing keys for X3DH"
-          spkPair <- cryptography.produceKeyPair
-          _ <- trace"SPK Pair produced!"
-          _ <- keysStorage.put("spk", spkPair)
+                           case Some(value) => trace"Main key pair found." >> value.pure[F]
+                           case None =>
+                             cryptography.produceKeyPair.flatMap { keyPair =>
+                               trace"Main key pair produced!" >> keysStorage.put("Main key pair", keyPair) >> keyPair
+                                 .pure[F]
+                             }
+                         }
+          _                  <- trace"Start producing keys for X3DH"
+          spkPair            <- cryptography.produceKeyPair
+          _                  <- trace"SPK Pair produced!"
+          _                  <- keysStorage.put("spk", spkPair)
           spkPublicSignature <- cryptography.sign(mainKeyPair._1, spkPair._2.getEncoded)
-          _ <- trace"Create spkKey ${new String(spkPair._2.getEncoded)}, signature ${new String(spkPublicSignature)}"
+          _                  <- trace"Create spkKey ${new String(spkPair._2.getEncoded)}, signature ${new String(spkPublicSignature)}"
           iqX3DH = IqX3DHInit(spkPair._2, mainKeyPair._2, spkPublicSignature)
           _ <- tcpClient.send(iqX3DH)
         } yield ()
@@ -113,7 +149,8 @@ object XMPPClientProgram {
   ): F[Program[F]] =
     for {
       implicit0(log: Logging[F]) <- logs.forService[XMPPClientProgram[F]]
-      keysStorage <- Storage.makeMapStorage[F, String, (PrivateKey, PublicKey)]
-      tcpClient <- TCPClient.make[F](settings.serverHost, settings.serverPort, socketGroup)
-    } yield new XMPPClientProgram(settings, tcpClient, cryptography, keysStorage)
+      keysStorage                <- Storage.makeMapStorage[F, String, (PrivateKey, PublicKey)]
+      tcpClient                  <- TCPClient.make[F](settings.serverHost, settings.serverPort, socketGroup)
+      x3dhStorage                <- Storage.makeMapStorage[F, JId, (Array[Byte], Array[Byte])]
+    } yield new XMPPClientProgram(settings, tcpClient, cryptography, keysStorage, x3dhStorage)
 }

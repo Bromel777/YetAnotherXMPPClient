@@ -7,6 +7,7 @@ import cats.effect.concurrent.Ref
 import cats.effect.{Concurrent, ContextShift}
 import cats.syntax.traverse._
 import fs2.Stream
+import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
 import org.github.bromel777.yaXMPPc.configs.XMPPServerSettings
 import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.Stanza
@@ -24,7 +25,8 @@ import scala.collection.immutable.HashMap
 final class TCPServer[F[_]: Concurrent: ContextShift: Logging](
   serverSettings: XMPPServerSettings,
   socketGroup: SocketGroup,
-  clients: Ref[F, HashMap[UUID, ConnectedClient[F]]]
+  clients: Ref[F, HashMap[UUID, ConnectedClient[F]]],
+  infoQueue: Queue[F, TCPEvent]
 ) extends Server[F, (Stanza, UUID), Stanza] {
 
   override def receiverStream: Stream[F, (Stanza, UUID)] =
@@ -62,9 +64,10 @@ object TCPServer {
 
   def make[F[_]: Concurrent: ContextShift: Logging](
     serverSettings: XMPPServerSettings,
-    socketGroup: SocketGroup
+    socketGroup: SocketGroup,
+    tcpEventQueue: Queue[F, TCPEvent]
   ): F[TCPServer[F]] =
     Ref.of[F, HashMap[UUID, ConnectedClient[F]]](HashMap.empty[UUID, ConnectedClient[F]]).map { userMap =>
-      new TCPServer[F](serverSettings, socketGroup, userMap)
+      new TCPServer[F](serverSettings, socketGroup, userMap, tcpEventQueue)
     }
 }

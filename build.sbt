@@ -27,7 +27,7 @@ val yaXMPPc =
         Circe ++
         Scodec ++
         XML ++
-        BC ++
+        Crypto ++
         CompilerPlugins
     )
 

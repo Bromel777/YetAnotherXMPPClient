@@ -4,8 +4,8 @@ import sbt.librarymanagement.ModuleID
 object dependencies {
 
   val Fs2: List[ModuleID] = List(
-    "co.fs2" %% "fs2-core"   % versions.fs2,
-    "co.fs2" %% "fs2-io"     % versions.fs2
+    "co.fs2" %% "fs2-core" % versions.fs2,
+    "co.fs2" %% "fs2-io"   % versions.fs2
   )
 
   val Typing: List[ModuleID] = List(
@@ -68,8 +68,9 @@ object dependencies {
     "org.scala-lang.modules" %% "scala-xml" % versions.xml
   )
 
-  val BC: List[ModuleID] = List(
-    "org.bouncycastle" % "bcprov-jdk15on" % versions.bc
+  val Crypto: List[ModuleID] = List(
+    "org.bouncycastle"      % "bcprov-jdk15on" % versions.bc,
+    "org.scorexfoundation" %% "scrypto"        % versions.scrypto
   )
 
   val CompilerPlugins: List[ModuleID] =

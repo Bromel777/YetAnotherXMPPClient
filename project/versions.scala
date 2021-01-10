@@ -23,6 +23,7 @@ object versions {
   val scodecStream       = "2.0.0"
   val xml                = "2.0.0-M3"
   val bc                 = "1.68"
+  val scrypto            = "2.1.6"
 
   val KindProjector = "0.11.0"
   val MacroParadise = "2.1.1"

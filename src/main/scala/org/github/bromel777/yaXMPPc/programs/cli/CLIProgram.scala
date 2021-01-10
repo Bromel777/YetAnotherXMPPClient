@@ -2,6 +2,7 @@ package org.github.bromel777.yaXMPPc.programs.cli
 
 import fs2.Stream
 import fs2.concurrent.Queue
+import org.github.bromel777.yaXMPPc.domain.xmpp.JId
 import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.Receiver
 import org.github.bromel777.yaXMPPc.programs.cli.CAServerCommands.ShowActivePublicKeys
 import org.github.bromel777.yaXMPPc.programs.cli.XMPPClientCommand._
@@ -22,7 +23,7 @@ final class CLIProgram[F[_]: Console](commandsQueue: Queue[F, Command]) {
       case "ProduceKeyPair" :: Nil                 => ProduceKeyPair
       case "DeleteKeyPair" :: Nil                  => DeleteKeyPair
       case "ProduceKeysForX3DH" :: Nil             => ProduceKeysForX3DH
-      case "InitSecureSession" :: receiver :: Nil  => InitSecureSession(Receiver(receiver))
+      case "InitSecureSession" :: receiver :: Nil  => InitSecureSession(JId(receiver))
       case "Register" :: name :: Nil               => Register(name)
       case "Auth" :: Nil                           => Auth
       case "ShowActiveSessions" :: Nil             => ShowActiveSessions

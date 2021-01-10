@@ -1,5 +1,6 @@
 package org.github.bromel777.yaXMPPc.programs
 
+import org.github.bromel777.yaXMPPc.domain.xmpp.JId
 import org.github.bromel777.yaXMPPc.domain.xmpp.stanza.Receiver
 
 package object cli {
@@ -12,7 +13,7 @@ package object cli {
     case object ProduceKeyPair extends XMPPClientCommand
     case object DeleteKeyPair extends XMPPClientCommand
     case object ProduceKeysForX3DH extends XMPPClientCommand
-    case class InitSecureSession(receiver: Receiver) extends XMPPClientCommand
+    case class InitSecureSession(receiverJid: JId) extends XMPPClientCommand
     case class Register(name: String) extends XMPPClientCommand
     case object Auth extends XMPPClientCommand
   }
