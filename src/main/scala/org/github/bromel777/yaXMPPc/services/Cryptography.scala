@@ -4,11 +4,13 @@ import java.security._
 
 import cats.Applicative
 import cats.effect.Sync
-import javax.crypto.KeyAgreement
+import javax.crypto.spec.SecretKeySpec
+import javax.crypto.{Cipher, KeyAgreement}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.jcajce.provider.symmetric.GOST3412_2015
+import java.security.Security
 import scorex.crypto.hash.Sha256
 import scorex.crypto.hash.Stribog256._
-import scorex.util.encode.Base64
 import tofu.syntax.monadic._
 
 trait Cryptography[F[_]] {
@@ -16,7 +18,9 @@ trait Cryptography[F[_]] {
   def produceKeyPair: F[(PrivateKey, PublicKey)]
   def sign(privateKey: PrivateKey, msg: Array[Byte]): F[Array[Byte]]
   def verify(publicKey: PublicKey, msg: Array[Byte], signature: Array[Byte]): F[Boolean]
-  def kdf(previousKey: Array[Byte], input: Array[Byte]): F[Array[Byte]]
+  def kdf(previousKey: Array[Byte], privateKey: PrivateKey, publicKey: PublicKey): F[Array[Byte]]
+  def encrypt(input: Array[Byte], key: Array[Byte]): F[Array[Byte]]
+  def decrypt(input: Array[Byte], key: Array[Byte]): F[Array[Byte]]
 
   def produceCommonKeyBySender(
     senderPrivateKey: PrivateKey,
@@ -38,8 +42,6 @@ object Cryptography {
 
   final private class Live[F[_]: Sync] extends Cryptography[F] {
 
-    Security.addProvider(new BouncyCastleProvider());
-
     override def produceKeyPair: F[(PrivateKey, PublicKey)] =
       Sync[F].delay {
         val f                      = KeyPairGenerator.getInstance("ECDH", "BC");
@@ -51,7 +53,6 @@ object Cryptography {
 
     override def sign(privateKey: PrivateKey, msg: Array[Byte]): F[Array[Byte]] =
       Sync[F].delay {
-        import java.security.Signature
         val s = Signature.getInstance("SHA256withECDSA", "BC")
         s.initSign(privateKey)
         s.update(msg)
@@ -66,12 +67,15 @@ object Cryptography {
         s.verify(signature)
       }
 
-    override def kdf(previousKey: Array[Byte], input: Array[Byte]): F[Array[Byte]] =
+    override def kdf(previousKey: Array[Byte], privateKey: PrivateKey, publicKey: PublicKey): F[Array[Byte]] =
       Sync[F].delay {
+
         val kXorOpad: Array[Byte] = previousKey.map(elem => (elem ^ 0x36).toByte)
         val kXorIpad: Array[Byte] = previousKey.map(elem => (elem ^ 0x5c).toByte)
-
-        val orLeftRes: Array[Byte]     = kXorIpad.zip(input).map { case (b1, b2) => (b1 | b2).toByte }
+        val keyAgree              = KeyAgreement.getInstance("ECDH")
+        keyAgree.init(privateKey)
+        keyAgree.doPhase(publicKey, true)
+        val orLeftRes: Array[Byte]     = kXorIpad.zip(keyAgree.generateSecret()).map { case (b1, b2) => (b1 | b2).toByte }
         val orLeftResHash: Array[Byte] = hash(orLeftRes).array
 
         val leftOrRight = kXorOpad.zip(orLeftResHash).map { case (b1, b2) => (b1 | b2).toByte }
@@ -93,17 +97,13 @@ object Cryptography {
         keyAgree.init(senderPrivateKey)
         keyAgree.doPhase(spk, true)
         val dh1 = keyAgree.generateSecret()
-        println(s"DH1: ${Base64.encode(dh1)}")
         keyAgree.init(ePrivateKey)
         keyAgree.doPhase(ipk, true)
         val dh2 = keyAgree.generateSecret()
-        println(s"DH2: ${Base64.encode(dh2)}")
         keyAgree.init(ePrivateKey)
         keyAgree.doPhase(spk, true)
         val dh3 = keyAgree.generateSecret()
-        println(s"DH3: ${Base64.encode(dh3)}")
         val key = Sha256.hash(dh1 ++ dh2 ++ dh3)
-        println(Base64.encode(key))
         ePublicKey -> key
       }
 
@@ -114,23 +114,33 @@ object Cryptography {
       senderIkPub: PublicKey
     ): F[Array[Byte]] =
       Sync[F].delay {
-        val f                       = KeyPairGenerator.getInstance("ECDH", "BC")
-        val keyAgree                = KeyAgreement.getInstance("ECDH")
+        val f        = KeyPairGenerator.getInstance("ECDH", "BC")
+        val keyAgree = KeyAgreement.getInstance("ECDH")
         keyAgree.init(receiverSPKPrivate)
         keyAgree.doPhase(senderIkPub, true)
         val dh1 = keyAgree.generateSecret()
-        println(s"DH1: ${Base64.encode(dh1)}")
         keyAgree.init(receiverPrivateKey)
         keyAgree.doPhase(senderEpPub, true)
         val dh2 = keyAgree.generateSecret()
-        println(s"DH2: ${Base64.encode(dh2)}")
         keyAgree.init(receiverSPKPrivate)
         keyAgree.doPhase(senderEpPub, true)
         val dh3 = keyAgree.generateSecret()
-        println(s"DH3: ${Base64.encode(dh3)}")
         val key = Sha256.hash(dh1 ++ dh2 ++ dh3)
-        println(Base64.encode(key))
         key
+      }
+
+    override def encrypt(input: Array[Byte], key: Array[Byte]): F[Array[Byte]] =
+      Sync[F].delay {
+        val cipher: Cipher = Cipher.getInstance("GOST3412-2015/CBC/PKCS5Padding", "BC")
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "GOST3412-2015"))
+        cipher.doFinal(input)
+      }
+
+    override def decrypt(input: Array[Byte], key: Array[Byte]): F[Array[Byte]] =
+      Sync[F].delay {
+        val cipher: Cipher = Cipher.getInstance("GOST3412-2015/CBC/PKCS5Padding", "BC")
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "GOST3412-2015"))
+        cipher.doFinal(input)
       }
   }
 }

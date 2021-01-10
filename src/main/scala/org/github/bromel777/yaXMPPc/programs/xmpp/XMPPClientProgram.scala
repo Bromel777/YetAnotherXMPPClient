@@ -2,9 +2,8 @@ package org.github.bromel777.yaXMPPc.programs.xmpp
 
 import java.security.{PrivateKey, PublicKey}
 
-import cats.effect.concurrent.MVar
-import cats.syntax.option._
 import cats.effect.{Concurrent, ContextShift, Sync, Timer}
+import cats.syntax.option._
 import fs2.Stream
 import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
@@ -17,7 +16,6 @@ import org.github.bromel777.yaXMPPc.programs.cli.Command
 import org.github.bromel777.yaXMPPc.programs.cli.XMPPClientCommand._
 import org.github.bromel777.yaXMPPc.services.Cryptography
 import org.github.bromel777.yaXMPPc.storage.Storage
-import scorex.util.encode.Base64
 import tofu.common.Console
 import tofu.logging.{Logging, Logs}
 import tofu.syntax.logging._
@@ -31,7 +29,7 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
   tcpClient: Client[F, Stanza, Stanza],
   cryptography: Cryptography[F],
   keysStorage: Storage[F, String, (PrivateKey, PublicKey)],
-  x3dhCommonKeys: Storage[F, JId, (Array[Byte], Array[Byte])]
+  x3dhCommonKeys: Storage[F, JId, Array[Byte]]
 ) extends Program[F] {
 
   var myJid: Option[String] = none
@@ -56,22 +54,36 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
           case Some(value) =>
             cryptography.produceCommonKeyBySender(value._1, x3DHParams.spkPub, x3DHParams.ikPub).flatMap {
               case (ekPub, secret) =>
-                info"Secret: ${Base64.encode(secret)}" >> tcpClient
-                  .send(IqX3dhFirstStep(JId(myJid.get), x3DHParams.JId, ekPub, value._2))
+                for {
+                  cypherKey <- cryptography.kdf(secret, value._1, x3DHParams.ikPub)
+                  _ <- x3dhCommonKeys.put(x3DHParams.JId, cypherKey)
+                  _ <- tcpClient.send(IqX3dhFirstStep(JId(myJid.get), x3DHParams.JId, ekPub, value._2))
+                } yield ()
             }
           case None => warn"Create main key pair and register it, before creation secure channel!"
         }
       case x3dhFirstStep: IqX3dhFirstStep =>
         keysStorage.get("Main key pair").flatMap {
-          case Some((privateKeyI, publicKeyI)) =>
+          case Some((privateKeyI, _)) =>
             keysStorage.get("spk").flatMap {
-              case Some((privateSpk, publicSpk)) =>
-                cryptography.produceCommonKeyByReceiver(privateKeyI, privateSpk, x3dhFirstStep.ekPub, x3dhFirstStep.ikPub).void
+              case Some((privateSpk, _)) =>
+                for {
+                  key <- cryptography.produceCommonKeyByReceiver(privateKeyI, privateSpk, x3dhFirstStep.ekPub, x3dhFirstStep.ikPub)
+                  cypherKey <- cryptography.kdf(key, privateKeyI, x3dhFirstStep.ikPub)
+                  _ <- x3dhCommonKeys.put(x3dhFirstStep.senderJID, cypherKey)
+                } yield ()
               case None => error"Keys storage was damaged! Impossible to establish secure channel"
             }
           case None => error"Keys storage was damaged! Impossible to establish secure channel"
         }
-      case Message(sender, _, value) => info"Receive message from ${sender.value.toString}. Message: $value"
+      case Message(sender, _, msgText) =>
+        x3dhCommonKeys.get(JId(sender.value)).flatMap {
+          case Some(key) =>
+            cryptography.encrypt(msgText.getBytes, key).flatMap { decrypt =>
+              info"Receive message: ${new String(decrypt)} from ${sender.value}"
+            }
+          case None => info"Receive msg (by insecure channel): $msgText from ${sender.value}"
+        }
       case _                         => info"Receive stanza: ${stanza.toString}"
     }
 
@@ -80,6 +92,20 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
       case ProduceKeyPair =>
         cryptography.produceKeyPair.flatMap { keyPair =>
           trace"Main key pair produced!" >> keysStorage.put("Main key pair", keyPair)
+        }
+      case SendMessage(receiver, msg) =>
+        x3dhCommonKeys.get(JId(receiver.value)) flatMap {
+          case Some(value) => trace"Send msg by secure channel"
+            cryptography.encrypt(msg.getBytes, value).flatMap { encrypt =>
+              tcpClient.send(
+                Message(
+                  Sender(myJid.get),
+                  receiver,
+                  new String(encrypt)
+                )
+              )
+            }
+          case None => trace"Send msg by insecure channel"
         }
       case DeleteKeyPair =>
         trace"Delete main key pair from storage, if it's exist" >> keysStorage.delete("Main key pair")
@@ -99,7 +125,7 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
                              }
                          }
           registerStanza = IqRegister(name, mainKeyPair._2)
-          _ = (myJid = name.some)
+          _              = (myJid = name.some)
           _ <- tcpClient.send(registerStanza)
         } yield ()
       case Auth =>
@@ -151,6 +177,6 @@ object XMPPClientProgram {
       implicit0(log: Logging[F]) <- logs.forService[XMPPClientProgram[F]]
       keysStorage                <- Storage.makeMapStorage[F, String, (PrivateKey, PublicKey)]
       tcpClient                  <- TCPClient.make[F](settings.serverHost, settings.serverPort, socketGroup)
-      x3dhStorage                <- Storage.makeMapStorage[F, JId, (Array[Byte], Array[Byte])]
+      x3dhStorage                <- Storage.makeMapStorage[F, JId, Array[Byte]]
     } yield new XMPPClientProgram(settings, tcpClient, cryptography, keysStorage, x3dhStorage)
 }

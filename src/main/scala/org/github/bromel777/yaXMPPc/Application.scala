@@ -1,10 +1,13 @@
 package org.github.bromel777.yaXMPPc
 
+import java.security.Security
+
 import cats.effect.{Blocker, Concurrent, ContextShift, ExitCode, Resource, Sync, Timer}
 import fs2.Stream
 import fs2.concurrent.Queue
 import fs2.io.tcp.SocketGroup
 import monix.eval.{Task, TaskApp}
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.github.bromel777.yaXMPPc.args.Args
 import org.github.bromel777.yaXMPPc.configs.AppConfig
 import org.github.bromel777.yaXMPPc.context.{AppContext, HasAppContext}
@@ -31,6 +34,8 @@ object Application extends TaskApp {
   implicit val logsFF: Logs[AppF, AppF] = Logs.sync[AppF, AppF]
 
   implicit val blocker: Blocker = Blocker.liftExecutionContext(ExecutionContext.global)
+
+  Security.addProvider(new BouncyCastleProvider)
 
   override def run(args: List[String]): InitF[ExitCode] =
     (Args.read[InitF](args) >>= (argsList =>
