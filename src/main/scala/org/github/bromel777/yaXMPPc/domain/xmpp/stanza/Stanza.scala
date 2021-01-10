@@ -154,7 +154,7 @@ object Stanza {
       case message if message.label == "message" =>
         val sender   = (message \ "@from").mkString
         val receiver = (message \ "@to").mkString
-        val body     = (message \\ "body").mkString
+        val body     = (message \\ "body").text.trim
         Message(Sender(sender), Receiver(receiver), body).some
       case res =>
         println(s"Receive: $res. ${(res \\ "x3dhmirea").isEmpty}")

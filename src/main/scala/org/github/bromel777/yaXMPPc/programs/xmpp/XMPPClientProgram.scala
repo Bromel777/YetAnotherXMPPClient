@@ -16,13 +16,14 @@ import org.github.bromel777.yaXMPPc.programs.cli.Command
 import org.github.bromel777.yaXMPPc.programs.cli.XMPPClientCommand._
 import org.github.bromel777.yaXMPPc.services.Cryptography
 import org.github.bromel777.yaXMPPc.storage.Storage
+import scorex.util.encode.Base64
 import tofu.common.Console
 import tofu.logging.{Logging, Logs}
 import tofu.syntax.logging._
 import tofu.syntax.monadic._
 
 import scala.concurrent.duration._
-import scala.util.Random
+import scala.util.{Failure, Random, Success}
 
 final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private (
   settings: XMPPClientSettings,
@@ -79,8 +80,9 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
       case Message(sender, _, msgText) =>
         x3dhCommonKeys.get(JId(sender.value)).flatMap {
           case Some(key) =>
-            cryptography.encrypt(msgText.getBytes, key).flatMap { decrypt =>
-              info"Receive message: ${new String(decrypt)} from ${sender.value}"
+            cryptography.decrypt(Base64.decode(msgText).get, key).flatMap {
+              case Failure(exception) => info"Exception ${exception.getMessage} during decryption msg!"
+              case Success(decrypt) => info"Receive message: ${new String(decrypt)} from ${sender.value}"
             }
           case None => info"Receive msg (by insecure channel): $msgText from ${sender.value}"
         }
@@ -101,7 +103,7 @@ final class XMPPClientProgram[F[_]: Concurrent: Console: Logging: Timer] private
                 Message(
                   Sender(myJid.get),
                   receiver,
-                  new String(encrypt)
+                  Base64.encode(encrypt)
                 )
               )
             }

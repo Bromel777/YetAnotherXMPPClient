@@ -4,14 +4,14 @@ import java.security._
 
 import cats.Applicative
 import cats.effect.Sync
-import javax.crypto.spec.SecretKeySpec
+import javax.crypto.spec.{IvParameterSpec, SecretKeySpec}
 import javax.crypto.{Cipher, KeyAgreement}
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.jcajce.provider.symmetric.GOST3412_2015
-import java.security.Security
 import scorex.crypto.hash.Sha256
 import scorex.crypto.hash.Stribog256._
+import scorex.util.encode.{Base58, Base64}
 import tofu.syntax.monadic._
+
+import scala.util.Try
 
 trait Cryptography[F[_]] {
 
@@ -20,7 +20,7 @@ trait Cryptography[F[_]] {
   def verify(publicKey: PublicKey, msg: Array[Byte], signature: Array[Byte]): F[Boolean]
   def kdf(previousKey: Array[Byte], privateKey: PrivateKey, publicKey: PublicKey): F[Array[Byte]]
   def encrypt(input: Array[Byte], key: Array[Byte]): F[Array[Byte]]
-  def decrypt(input: Array[Byte], key: Array[Byte]): F[Array[Byte]]
+  def decrypt(input: Array[Byte], key: Array[Byte]): F[Try[Array[Byte]]]
 
   def produceCommonKeyBySender(
     senderPrivateKey: PrivateKey,
@@ -132,15 +132,24 @@ object Cryptography {
     override def encrypt(input: Array[Byte], key: Array[Byte]): F[Array[Byte]] =
       Sync[F].delay {
         val cipher: Cipher = Cipher.getInstance("GOST3412-2015/CBC/PKCS5Padding", "BC")
-        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "GOST3412-2015"))
-        cipher.doFinal(input)
+        val iv = new IvParameterSpec(
+          Array(62, 28, 66, -104, -8, 38, -70, 30, -1, -126, 58, 44, -54, -51, -48, 7)
+        )
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "GOST3412-2015"), iv)
+        val res = cipher.doFinal(input)
+        res
       }
 
-    override def decrypt(input: Array[Byte], key: Array[Byte]): F[Array[Byte]] =
+    override def decrypt(input: Array[Byte], key: Array[Byte]): F[Try[Array[Byte]]] =
       Sync[F].delay {
-        val cipher: Cipher = Cipher.getInstance("GOST3412-2015/CBC/PKCS5Padding", "BC")
-        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "GOST3412-2015"))
-        cipher.doFinal(input)
+        Try {
+          val cipher: Cipher = Cipher.getInstance("GOST3412-2015/CBC/PKCS5Padding", "BC")
+          val iv = new IvParameterSpec(
+            Array(62, 28, 66, -104, -8, 38, -70, 30, -1, -126, 58, 44, -54, -51, -48, 7)
+          )
+          cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "GOST3412-2015"), iv)
+          cipher.doFinal(input)
+        }
       }
   }
 }
